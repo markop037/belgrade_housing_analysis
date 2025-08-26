@@ -1,67 +1,54 @@
 import pandas as pd
-import re
+import ast
 
-# Load raw data
-df = pd.read_csv("../data/raw/serbian_apartments_raw.csv")
+# Load the raw CSVs
+df_basic = pd.read_csv("../data/raw/serbian_apartments_basic.csv")
+df_details = pd.read_csv("../data/raw/serbian_apartments_details.csv")
+df_details = df_details.iloc[:, 1:]
 
-# -------------------------
-# Functions to extract features
-# -------------------------
 
-def extract_number(text):
-    """Extract only digits from a string and convert to int."""
-    text = re.sub(r"[^\d]", "", str(text))
-    return int(text) if text else None
+# Function to split the location into separate columns
+def split_location(location):
+    parts = [x.strip() for x in location.split(',')]
+    # Ensure we have at least 5 elements
+    while len(parts) < 5:
+        parts.append('')
+    return pd.Series({
+        'City': parts[0],
+        'Municipality': parts[2],
+    })
 
-def extract_area(text):
-    """Extract area in m², e.g., '65 m²' -> 65."""
-    match = re.search(r"(\d+)\s*m", str(text))
-    return int(match.group(1)) if match else None
 
-def extract_rooms(text):
-    """Extract number of rooms, e.g., '3 sobe' -> 3."""
-    match = re.search(r"(\d+)\s*sobe?", str(text))
-    return int(match.group(1)) if match else None
+# Function to split details into area, rooms, and floor
+def split_details(details):
+    try:
+        details_list = ast.literal_eval(details)  # Convert string list to Python list
+        area = details_list[0].replace(' m', '') if len(details_list) > 0 else ''
+        rooms = details_list[1] if len(details_list) > 1 else ''
+        floor = details_list[2] if len(details_list) > 2 else ''
+        return pd.Series({
+            'Area_m2': area,
+            'Rooms': rooms,
+            'Floor': floor
+        })
+    except:
+        return pd.Series({
+            'Area_m2': '',
+            'Rooms': '',
+            'Floor': ''
+        })
 
-def extract_floor(text):
-    """Extract floor number from '3/5' format -> 3."""
-    match = re.search(r"(\d+)\s*/\s*\d+", str(text))
-    return int(match.group(1)) if match else None
 
-def extract_year_built(text):
-    """Extract year built, e.g., '2015' -> 2015."""
-    match = re.search(r"(\d{4})", str(text))
-    return int(match.group(1)) if match else None
+# Apply functions
+location_df = df_basic['Location'].apply(split_location)
+details_df = df_basic['Details'].apply(split_details)
 
-def extract_furnished(text):
-    """Return 1 if renovated/new, 0 if old/unfurnished, else None."""
-    text = str(text).lower()
-    if "renoviran" in text or "novo" in text:
-        return 1
-    elif "star" in text or "neopremljeno" in text:
-        return 0
-    else:
-        return None
+# Create cleaned DataFrame
+df_basic_clean = pd.concat([df_basic[["URL", 'Title', 'Price']], location_df, details_df], axis=1)
 
-# -------------------------
-# Create new columns in dataframe
-# -------------------------
+# Combine both DataFrames
 
-df["Price_num"] = df["Price"].apply(extract_number)
-df["Area_m2"] = df["Details"].apply(extract_area)
-df["Num_rooms"] = df["Details"].apply(extract_rooms)
-df["Floor"] = df["Details"].apply(extract_floor)
-df["Year_built"] = df["Details"].apply(extract_year_built)
-df["Furnished"] = df["Details"].apply(extract_furnished)
+df_combine = pd.concat([df_basic_clean, df_details], axis=1).reset_index(drop=True)
 
-# Calculate price per m²
-df["Price_per_m2"] = df.apply(
-    lambda row: row["Price_num"] / row["Area_m2"] if row["Area_m2"] else None,
-    axis=1
-)
-
-# -------------------------
-# Save cleaned CSV
-# -------------------------
-df.to_csv("../data/processed/serbian_apartments_clean.csv", index=False, encoding="utf-8-sig")
-print("Saved cleaned data to data/processed/serbian_apartments_clean.csv")
+# Save the cleaned CSV
+df_combine.to_csv("../data/processed/serbian_apartments_clean.csv", index=False, encoding="utf-8-sig")
