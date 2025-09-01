@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 from sklearn.preprocessing import StandardScaler
+from scripts.scorebook import FLOOR_MAP, PARKING_KEYWORDS, TYPE_MAP, CONDITION_MAP, HEATING_MAP, ROMAN_MAP
 
 
 # Function to convert parking info to numeric
@@ -8,49 +9,36 @@ def parking_to_num(val):
     if pd.isna(val):
         return 0
     val = str(val).lower()
-    keywords = ["garaža", "parking"]
-    return sum(1 for k in keywords if k in val)
-
-
-# Read CSV with robust settings
-df = pd.read_csv("../data/processed/serbian_apartments_clean.csv",
-                 encoding="utf-8-sig",
-                 on_bad_lines="skip")
+    return sum(1 for k in PARKING_KEYWORDS if k in val)
 
 
 def floor_to_binary(val):
     if pd.isna(val):
         return 0
 
-    val = str(val).strip().upper()  # normalize
+    val = str(val).strip().upper()
 
-    # Check for ground floor
-    if val in ["PR", "VPR"]:
-        return 0
+    if val in FLOOR_MAP:
+        return FLOOR_MAP[val]
 
-    # Roman numerals mapping
-    roman_map = {
-        "I": 1, "II": 2, "III": 3, "IV": 4, "V": 5,
-        "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10,
-        "XI": 11, "XII": 12, "XIII": 13, "XIV": 14, "XV": 15
-    }
-
-    # Match pattern like "IV/8"
     match = re.match(r"([IVXLC]+)\/(\d+)", val)
     if not match:
-        return 0  # unexpected format
+        return 0
 
     floor_roman, total_floors = match.groups()
-    floor_num = roman_map.get(floor_roman, 0)
+    floor_num = ROMAN_MAP.get(floor_roman, 0)
     total_floors = int(total_floors)
 
-    # Last floor check
-    if floor_num == total_floors:
+    if floor_num == total_floors:  # poslednji sprat
         return 0
 
     return 1
 
 
+# Read CSV with robust settings
+df = pd.read_csv("../data/processed/serbian_apartments_clean.csv",
+                 encoding="utf-8-sig",
+                 on_bad_lines="skip")
 # Clean 'Price' column
 df["Price"] = (
     df["Price"]
@@ -74,13 +62,9 @@ df["Municipality_score"] = df["Municipality"].map(municipality_score)
 # Convert categorical columns to numeric
 df["Floor_num"] = df["Floor"].apply(floor_to_binary)
 df["Parking_num"] = df["Parking"].apply(parking_to_num)
-df["Type_num"] = df["Type"].map({"Novogradnja": 1}).fillna(0).astype(int)
-
-condition_mapping = {"Lux": 2, "Renovirano": 1}
-df["Condition_num"] = df["Condition"].map(condition_mapping).fillna(0).astype(int)
-
-heating_mapping = {"Toplotne pumpe": 4, "Podno": 3, "CG": 2, "Norveški radijatori": 1}
-df["Heating_num"] = df["Heating"].map(heating_mapping).fillna(0).astype(int)
+df["Type_num"] = df["Type"].map(TYPE_MAP).fillna(0).astype(int)
+df["Condition_num"] = df["Condition"].map(CONDITION_MAP).fillna(0).astype(int)
+df["Heating_num"] = df["Heating"].map(HEATING_MAP).fillna(0).astype(int)
 
 # Select only numeric columns for modeling
 df_numeric = df[[
