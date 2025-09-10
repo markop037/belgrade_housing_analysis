@@ -5,6 +5,7 @@ import random
 import time
 import re
 
+# number of apartments the model should target
 TOTAL_TARGET = 150
 data_list = []
 

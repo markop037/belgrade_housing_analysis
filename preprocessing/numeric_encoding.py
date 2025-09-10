@@ -56,7 +56,7 @@ df["Price_per_m2"] = df["Price"] / df["Area_m2"]
 
 # Generate municipality score based on average price per m2
 avg_prices = df.groupby("Municipality")["Price_per_m2"].mean().sort_values(ascending=False)
-municipality_score = {mun: rank + 1 for rank, mun in enumerate(avg_prices.index)}
+municipality_score = {mun: len(avg_prices) - rank for rank, mun in enumerate(avg_prices.index)}
 df["Municipality_score"] = df["Municipality"].map(municipality_score)
 
 # Convert categorical columns to numeric
@@ -76,7 +76,16 @@ df_numeric = df[[
 # Save numeric data
 df_numeric.to_csv("../data/processed/data_numeric.csv", index=False, encoding="utf-8-sig")
 
-# Optional: Standardize numeric data for modeling
+# Standardize numeric data for modeling
+cols_to_scale = [
+    "Area_m2", "Rooms", "Floor_num",
+    "Parking_num", "Type_num", "Municipality_score",
+    "Condition_num", "Heating_num"
+]
+
 scaler = StandardScaler()
-df_scaled = pd.DataFrame(scaler.fit_transform(df_numeric), columns=df_numeric.columns)
+df_scaled_values = scaler.fit_transform(df_numeric[cols_to_scale])
+
+df_scaled = pd.DataFrame(df_scaled_values, columns=cols_to_scale)
+
 df_scaled.to_csv("../data/processed/data_numeric_scaled.csv", index=False, encoding="utf-8-sig")
