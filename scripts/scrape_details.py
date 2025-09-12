@@ -83,3 +83,4 @@ print(f"Saved detailed info for {len(df_details)} apartments to serbian_apartmen
 
 # Close the driver
 driver.quit()
+

@@ -26,6 +26,12 @@ def split_details(details):
         area = details_list[0].replace(' m', '') if len(details_list) > 0 else ''
         rooms = details_list[1] if len(details_list) > 1 else ''
         floor = details_list[2] if len(details_list) > 2 else ''
+
+        if isinstance(rooms, str) and '+' in rooms:
+            rooms = float(rooms.replace('+', ''))  # Convert '5+' to 5.0
+        else:
+            rooms = float(rooms) if rooms != '' else None
+
         return pd.Series({
             'Area_m2': area,
             'Rooms': rooms,
@@ -47,7 +53,6 @@ details_df = df_basic['Details'].apply(split_details)
 df_basic_clean = pd.concat([df_basic[["URL", 'Title', 'Price']], location_df, details_df], axis=1)
 
 # Combine both DataFrames
-
 df_combine = pd.concat([df_basic_clean, df_details], axis=1).reset_index(drop=True)
 
 # Save the cleaned CSV
