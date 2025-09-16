@@ -4,15 +4,6 @@ FLOOR_MAP = {"PR": 0, "VPR": 0}
 # Parking: both "garaža" and "parking" = 2, none = 0, one of them = 1
 PARKING_KEYWORDS = ["garaža", "parking"]
 
-# Type: "Novogradnja" = 1, others = 0
-TYPE_MAP = {"Novogradnja": 1}
-
-# Condition: "Lux" = 2, "Renovirano" = 1, others = 0
-CONDITION_MAP = {"Lux": 2, "Renovirano": 1}
-
-# Heating: numerical ranking
-HEATING_MAP = {"Toplotne pumpe": 4, "Podno": 3, "CG": 2, "Norveški radijatori": 1}
-
 # Roman numerals mapping
 ROMAN_MAP = {
     "I": 1, "II": 2, "III": 3, "IV": 4, "V": 5,
