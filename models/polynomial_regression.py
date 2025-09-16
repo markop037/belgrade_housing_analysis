@@ -5,25 +5,35 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error, r2_score
+from preprocessing.numeric_encoding import ApartmentPreprocessor  # import preprocesora
 
 
 class PolynomialRegressionModel:
-    def __init__(self, csv_path="../data/processed/data_numeric_scaled.csv", degree=2, ridge_alpha=10.0):
-        # Load dataset
-        self.df = pd.read_csv(csv_path)
+    def __init__(self, csv_path="../data/processed/serbian_apartments_clean.csv", degree=2, ridge_alpha=10.0):
+        # Load original dataset
+        self.df_clean = pd.read_csv(csv_path, encoding="utf-8-sig", on_bad_lines="skip")
+
+        # Create and fit the preprocessor
+        self.prep = ApartmentPreprocessor()
+        df_model = self.prep.fit_transform(self.df_clean, scale=True)
+
         # Separate target variable
-        self.y = self.df["Price_per_m2"]
-        self.X = self.df.drop(columns=["Price_per_m2"])
+        self.y = df_model["Price_per_m2"]
+        self.X = df_model.drop(columns=["Price_per_m2"])
+
         # Polynomial degree and Ridge alpha
         self.degree = degree
         self.ridge_alpha = ridge_alpha
+
         # Initialize the pipeline
         self.pipeline = Pipeline([
             ("poly", PolynomialFeatures(degree=self.degree, include_bias=False, interaction_only=True)),
             ("ridge", Ridge(alpha=self.ridge_alpha, random_state=42))
         ])
+
         # Split the data
         self._split_data()
+
         # Train the model
         self.train()
 
@@ -40,13 +50,49 @@ class PolynomialRegressionModel:
         mse = mean_squared_error(self.y_test, y_pred)
         rmse = np.sqrt(mse)
         r2 = r2_score(self.y_test, y_pred)
-        return {
-            "PolynomialDegree": self.degree,
-            "RidgeAlpha": self.ridge_alpha,
-            "RMSE": rmse,
-            "R2": r2,
-            "AveragePrice": self.y.mean()
-        }
+        avg_price = self.y.mean()
 
-    def predict(self, x_new):
-        return self.pipeline.predict(x_new)
+        print(f"Polynomial Degree: {self.degree}")
+        print(f"Ridge Alpha: {self.ridge_alpha}")
+        print(f"Root Mean Squared Error (RMSE): {rmse:.2f} EUR/m²")
+        print(f"R² Score: {r2:.4f}")
+        print(f"Average Price per m² in dataset: {avg_price:.2f} EUR/m²")
+
+    def predict(self, new_apartment: dict):
+        # Convert dict to DataFrame
+        df_new = pd.DataFrame([new_apartment])
+
+        # Preprocess using already fitted preprocessor
+        df_new_processed = self.prep.transform(df_new, scale=True).drop(columns=["Price_per_m2"])
+
+        # Reindex to ensure same features as training set
+        df_new_processed = df_new_processed.reindex(columns=self.X.columns, fill_value=0)
+
+        # Predict price per m²
+        price_per_m2 = self.pipeline.predict(df_new_processed)[0]
+
+        # Calculate total price
+        area = float(new_apartment["Area_m2"])
+        total_price = price_per_m2 * area
+
+        return {"Price_per_m2": round(price_per_m2, 2), "Price": round(total_price, 2)}
+
+
+model = PolynomialRegressionModel()
+model.evaluate()
+
+# Define a new apartment for test
+new_apartment = {
+    "Price": 0,
+    "Municipality": "Stari grad",
+    "Area_m2": 127,
+    "Rooms": 4,
+    "Floor": "IV/4",
+    "Type": "Stara gradnja",
+    "Condition": "Izvorno stanje",
+    "Heating": "TA",
+    "Parking": ""
+}
+
+result = model.predict(new_apartment)
+print(result)

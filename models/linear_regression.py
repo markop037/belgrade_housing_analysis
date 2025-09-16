@@ -3,16 +3,19 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 import numpy as np
+from preprocessing.numeric_encoding import ApartmentPreprocessor
 
 
 class LinearRegressionModel:
-    def __init__(self, csv_path="../data/processed/data_numeric_scaled.csv"):
+    def __init__(self, csv_path="../data/processed/serbian_apartments_clean.csv"):
         # Load the dataset
-        self.X = pd.read_csv(csv_path)
-        # Separate target variable
-        self.y = self.X["Price_per_m2"]
-        # Drop target from features
-        self.X = self.X.drop(columns=["Price_per_m2"])
+        self.df_clean = pd.read_csv(csv_path, encoding="utf-8-sig", on_bad_lines="skip")
+        # Create and fit the preprocessor
+        self.prep = ApartmentPreprocessor()
+        df_model = self.prep.fit_transform(self.df_clean, scale=True)
+        # Prepare features (X) and target (y)
+        self.X = df_model.drop(columns=["Price_per_m2"])
+        self.y = df_model["Price_per_m2"]
         # Initialize Linear Regression model
         self.model = LinearRegression()
         # Split dataset into train and test sets
@@ -40,10 +43,44 @@ class LinearRegressionModel:
         # Calculate R² score
         r2 = r2_score(self.y_test, y_pred)
         # Return evaluation metrics
-        return {"RMSE": rmse,
-                "R2": r2,
-                "AveragePrice": self.y.mean()}
+        print(f"Root Mean Squared Error: {rmse:.4f} EUR/m²")
+        print(f"R² Score: {r2:.4f}")
 
-    def predict(self, x_new):
-        # Predict prices for new data.
-        return self.model.predict(x_new)
+    def predict(self, new_apartment: dict):
+        # Convert the dict to a DataFrame
+        df_new = pd.DataFrame([new_apartment])
+
+        # Preprocess the new apartment using already fitted preprocessor
+        df_new_processed = self.prep.transform(df_new, scale=True).drop(columns=["Price_per_m2"])
+
+        # Reindex to ensure same features as training set
+        df_new_processed = df_new_processed.reindex(columns=self.X.columns, fill_value=0)
+
+        # Predict price per m²
+        price_per_m2 = self.model.predict(df_new_processed)[0]
+
+        # Calculate total price
+        area = float(new_apartment["Area_m2"])
+        total_price = price_per_m2 * area
+
+        return {"Price_per_m2": round(price_per_m2, 2), "Price": round(total_price, 2)}
+
+
+model = LinearRegressionModel()
+model.evaluate()
+
+# Define a new apartment for test
+new_apartment = {
+    "Price": 0,
+    "Municipality": "Stari grad",
+    "Area_m2": 127,
+    "Rooms": 4,
+    "Floor": "IV/4",
+    "Type": "Stara gradnja",
+    "Condition": "Izvorno stanje",
+    "Heating": "TA",
+    "Parking": ""
+}
+
+result = model.predict(new_apartment)
+print(result)
