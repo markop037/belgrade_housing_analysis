@@ -48,11 +48,12 @@ for index, row in df_basic.iterrows():
             )
             labels_text = [label.text.strip() for label in labels]
 
-            parking_list = [x for x in labels_text if any(y in x for y in ['Garaža', 'Parking'])]
-            parking = ", ".join(parking_list) if parking_list else "None"
+            parking_garage = 1 if any("Garaža" in x for x in labels_text) else 0
+            parking_outdoor = 1 if any("Parking" in x for x in labels_text) else 0
 
         except:
-            parking = "None"
+            parking_garage = 0
+            parking_outdoor = 0
 
         # Append to list
         details_list.append({
@@ -60,7 +61,8 @@ for index, row in df_basic.iterrows():
             "Type": property_type,
             "Condition": property_condition,
             "Heating": heating_type,
-            "Parking": parking
+            "Parking_garage": parking_garage,
+            "Parking_outdoor": parking_outdoor
         })
 
     except Exception as e:
@@ -69,8 +71,8 @@ for index, row in df_basic.iterrows():
             "URL": url,
             "Property Type": None,
             "Property Condition": None,
-            "Heating": None,
-            "Parking": None
+            "Parking_garage": 0,
+            "Parking_outdoor": 0
         })
 
     time.sleep(2)

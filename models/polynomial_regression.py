@@ -5,7 +5,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error, r2_score
-from preprocessing.numeric_encoding import ApartmentPreprocessor  # import preprocesora
+from preprocessing.numeric_encoding import ApartmentPreprocessor
 
 
 class PolynomialRegressionModel:
@@ -52,11 +52,12 @@ class PolynomialRegressionModel:
         r2 = r2_score(self.y_test, y_pred)
         avg_price = self.y.mean()
 
-        print(f"Polynomial Degree: {self.degree}")
-        print(f"Ridge Alpha: {self.ridge_alpha}")
-        print(f"Root Mean Squared Error (RMSE): {rmse:.2f} EUR/m²")
-        print(f"R² Score: {r2:.4f}")
-        print(f"Average Price per m² in dataset: {avg_price:.2f} EUR/m²")
+        return (
+            f"Polynomial Degree: {self.degree}\n"
+            f"Ridge Alpha: {self.ridge_alpha}\n"
+            f"Root Mean Squared Error (RMSE): {rmse:.2f} EUR/m²\n"
+            f"R² Score: {r2:.2f}\n"
+        )
 
     def predict(self, new_apartment: dict):
         # Convert dict to DataFrame
@@ -75,24 +76,24 @@ class PolynomialRegressionModel:
         area = float(new_apartment["Area_m2"])
         total_price = price_per_m2 * area
 
-        return {"Price_per_m2": round(price_per_m2, 2), "Price": round(total_price, 2)}
+        return f"Cena po m²: {price_per_m2:.2f} EUR/m²\nUkupna cena: {total_price:.2f} EUR"
 
 
 model = PolynomialRegressionModel()
-model.evaluate()
+print(model.evaluate())
 
 # Define a new apartment for test
 new_apartment = {
     "Price": 0,
-    "Municipality": "Stari grad",
-    "Area_m2": 127,
-    "Rooms": 4,
-    "Floor": "IV/4",
-    "Type": "Stara gradnja",
-    "Condition": "Izvorno stanje",
-    "Heating": "TA",
-    "Parking": ""
+    "Municipality": "Voždovac",
+    "Area_m2": 40,
+    "Rooms": 1.5,
+    "Floor": "VPR/4",
+    "Type": "Novogradnja",
+    "Condition": "Lux",
+    "Heating": "EG",
+    "Parking_garage": 0,
+    "Parking_outdoor": 1
 }
 
 result = model.predict(new_apartment)
-print(result)

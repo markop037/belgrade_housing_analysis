@@ -1,36 +1,36 @@
 import pandas as pd
 import ast
 
-# Load the raw CSVs
+# Load the raw CSVs ---
 df_basic = pd.read_csv("../data/raw/serbian_apartments_basic.csv")
 df_details = pd.read_csv("../data/raw/serbian_apartments_details.csv")
-df_details = df_details.iloc[:, 1:]
 
+# Remove duplicate URL column if present
+if "URL" in df_details.columns:
+    df_details = df_details.loc[:, df_details.columns != "URL"]
 
-# Function to split the location into separate columns
+# Function to split the location into separate columns ---
 def split_location(location):
     parts = [x.strip() for x in location.split(',')]
-    # Ensure we have at least 5 elements
     while len(parts) < 5:
         parts.append('')
     return pd.Series({
-        'City': parts[0],
-        'Municipality': parts[2],
+        'City': parts[0] if parts[0] != '' else 'Ostalo',
+        'Municipality': parts[2] if parts[2] != '' else 'Ostalo',
     })
 
-
-# Function to split details into area, rooms, and floor
+# Function to split details into area, rooms, and floor ---
 def split_details(details):
     try:
-        details_list = ast.literal_eval(details)  # Convert string list to Python list
-        area = details_list[0].replace(' m', '') if len(details_list) > 0 else ''
-        rooms = details_list[1] if len(details_list) > 1 else ''
-        floor = details_list[2] if len(details_list) > 2 else ''
+        details_list = ast.literal_eval(details)
+        area = details_list[0].replace(' m', '') if len(details_list) > 0 and details_list[0] != '' else None
+        rooms = details_list[1] if len(details_list) > 1 and details_list[1] != '' else None
+        floor = details_list[2] if len(details_list) > 2 and details_list[2] != '' else 'Ostalo'
 
         if isinstance(rooms, str) and '+' in rooms:
-            rooms = float(rooms.replace('+', ''))  # Convert '5+' to 5.0
+            rooms = float(rooms.replace('+', ''))
         else:
-            rooms = float(rooms) if rooms != '' else None
+            rooms = float(rooms) if rooms is not None else None
 
         return pd.Series({
             'Area_m2': area,
@@ -39,21 +39,32 @@ def split_details(details):
         })
     except:
         return pd.Series({
-            'Area_m2': '',
-            'Rooms': '',
-            'Floor': ''
+            'Area_m2': None,
+            'Rooms': None,
+            'Floor': 'Ostalo'
         })
 
 
-# Apply functions
+# Apply location and details transformations ---
 location_df = df_basic['Location'].apply(split_location)
-details_df = df_basic['Details'].apply(split_details)
+details_df_split = df_basic['Details'].apply(split_details)
 
-# Create cleaned DataFrame
-df_basic_clean = pd.concat([df_basic[["URL", 'Title', 'Price']], location_df, details_df], axis=1)
+# Create cleaned basic DataFrame ---
+df_basic_clean = pd.concat([df_basic[["URL", "Title", "Price"]], location_df, details_df_split], axis=1)
 
-# Combine both DataFrames
-df_combine = pd.concat([df_basic_clean, df_details], axis=1).reset_index(drop=True)
+# Select relevant columns from details CSV ---
+cols_to_add = ["Type", "Condition", "Heating", "Parking_garage", "Parking_outdoor"]
+df_details_subset = df_details[cols_to_add]
 
-# Save the cleaned CSV
+# Fill missing categorical values with 'Ostalo' only for Type, Condition, Heating
+categorical_cols = ["Type", "Condition", "Heating"]
+df_details_subset[categorical_cols] = df_details_subset[categorical_cols].fillna('Ostalo')
+df_details_subset[categorical_cols] = df_details_subset[categorical_cols].replace('', 'Ostalo')
+
+# Combine basic and detailed DataFrames ---
+df_combine = pd.concat([df_basic_clean, df_details_subset], axis=1).reset_index(drop=True)
+
+# Save the cleaned CSV ---
 df_combine.to_csv("../data/processed/serbian_apartments_clean.csv", index=False, encoding="utf-8-sig")
+
+print(f"Cleaned and combined data saved with {len(df_combine)} rows.")

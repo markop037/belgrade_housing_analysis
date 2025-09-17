@@ -6,10 +6,10 @@ import time
 import re
 
 # number of apartments the model should target
-TOTAL_TARGET = 500
+TOTAL_TARGET = 300
 data_list = []
 
-for page in range(1, 51):  # scrape up to 30 pages
+for page in range(1, 41):  # scrape up to 30 pages
     url = "https://www.halooglasi.com/nekretnine/prodaja-stanova/beograd"
     headers = {"User-Agent": "Mozilla/5.0"}
     result = requests.get(url, headers=headers)
@@ -20,7 +20,7 @@ for page in range(1, 51):  # scrape up to 30 pages
     if not ads:
         break
 
-    sample_ads = random.sample(ads, min(10, len(ads)))
+    sample_ads = random.sample(ads, min(5, len(ads)))
 
     for ad in sample_ads:
         try:

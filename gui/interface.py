@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import pandas as pd
 from scripts.scorebook import ROMAN_MAP
+from models.linear_regression import LinearRegressionModel
+from models.polynomial_regression import PolynomialRegressionModel
 
 
 def add_row(row, label_text, widget):
@@ -63,10 +65,120 @@ def validate_inputs():
     return True
 
 
-# Submit button
-def submit():
+def submit_linear_regression():
     if validate_inputs():
-        messagebox.showinfo("Uspešno", "Podaci su validni!")
+        # Collect apartment data from inputs
+        new_apartment = {
+            "Price": 0,
+            "Municipality": municipality_var.get(),
+            "Area_m2": float(size_var.get()),
+            "Rooms": float(rooms_var.get()),
+            "Floor": floor_var.get(),
+            "Type": building_var.get(),
+            "Condition": condition_var.get(),
+            "Heating": heating_var.get(),
+            "Parking_garage": garage_var.get(),
+            "Parking_outdoor": parking_var.get()
+        }
+
+        # Load the trained linear regression model
+        model = LinearRegressionModel()
+        prediction = model.predict(new_apartment)
+
+        # Create custom popup window for displaying prediction
+        popup = tk.Toplevel(root)
+        popup.title("Predicted Price - Linear")
+
+        # Set popup size
+        popup_width = 400
+        popup_height = 200
+
+        # Center popup relative to main window
+        root_x = root.winfo_x()
+        root_y = root.winfo_y()
+        root_width = root.winfo_width()
+        root_height = root.winfo_height()
+
+        pos_x = root_x + (root_width // 2) - (popup_width // 2)
+        pos_y = root_y + (root_height // 2) - (popup_height // 2)
+
+        popup.geometry(f"{popup_width}x{popup_height}+{pos_x}+{pos_y}")
+        popup.resizable(False, False)
+
+        # Title inside popup
+        tk.Label(
+            popup, text="Procena vrednosti stana (linearna regresija)",
+            font=("Arial", 13, "bold")
+        ).pack(pady=(20, 10))
+
+        # Predicted price label
+        tk.Label(
+            popup, text=f"{prediction} €",
+            font=("Arial", 16, "bold"), fg="green"
+        ).pack(pady=10)
+
+        # Close button
+        tk.Button(
+            popup, text="Close", command=popup.destroy, font=default_font
+        ).pack(pady=10)
+
+
+def submit_polynomial_regression():
+    if validate_inputs():
+        # Collect apartment data from inputs
+        new_apartment = {
+            "Price": 0,
+            "Municipality": municipality_var.get(),
+            "Area_m2": float(size_var.get()),
+            "Rooms": float(rooms_var.get()),
+            "Floor": floor_var.get(),
+            "Type": building_var.get(),
+            "Condition": condition_var.get(),
+            "Heating": heating_var.get(),
+            "Parking_garage": garage_var.get(),
+            "Parking_outdoor": parking_var.get()
+        }
+
+        # Load the trained polynomial regression model
+        model = PolynomialRegressionModel()
+        prediction = model.predict(new_apartment)
+
+        # Create custom popup window for displaying prediction
+        popup = tk.Toplevel(root)
+        popup.title("Predicted Price - Polynomial")
+
+        # Set popup size
+        popup_width = 400
+        popup_height = 200
+
+        # Center popup relative to main window
+        root_x = root.winfo_x()
+        root_y = root.winfo_y()
+        root_width = root.winfo_width()
+        root_height = root.winfo_height()
+
+        pos_x = root_x + (root_width // 2) - (popup_width // 2)
+        pos_y = root_y + (root_height // 2) - (popup_height // 2)
+
+        popup.geometry(f"{popup_width}x{popup_height}+{pos_x}+{pos_y}")
+        popup.resizable(False, False)
+
+        # Title inside popup
+        tk.Label(
+            popup, text="Procena vrednosti stana (polinomska regresija)",
+            font=("Arial", 13, "bold")
+        ).pack(pady=(20, 10))
+
+        # Predicted price label
+        tk.Label(
+            popup, text=f"{prediction} €",
+            font=("Arial", 16, "bold"), fg="blue"
+        ).pack(pady=10)
+
+        # Close button
+        tk.Button(
+            popup, text="Close", command=popup.destroy, font=default_font
+        ).pack(pady=10)
 
 
 # Load data
@@ -74,11 +186,8 @@ df = pd.read_csv("../data/processed/serbian_apartments_clean.csv")
 municipalities = df["Municipality"].dropna().unique().tolist()
 rooms = sorted(df["Rooms"].dropna().astype(float).unique().tolist())
 types = df["Type"].dropna().unique().tolist()
-types.append("Ostalo")
 condition = df["Condition"].dropna().unique().tolist()
-condition.append("Ostalo")
 heating = df["Heating"].dropna().unique().tolist()
-heating.append("Ostalo")
 
 # Main window
 root = tk.Tk()
@@ -132,6 +241,7 @@ tk.Label(main_frame, text="Sprat stana:", font=default_font).grid(row=9, column=
 
 floor_total_var.trace_add("write", update_floors)
 
+# Checkboxes for parking
 garage_var = tk.IntVar()
 parking_var = tk.IntVar()
 tk.Checkbutton(main_frame, text="Garaža", variable=garage_var, font=default_font).grid(row=10, column=0, pady=5)
@@ -140,8 +250,11 @@ tk.Checkbutton(main_frame, text="Parking", variable=parking_var, font=default_fo
 main_frame.columnconfigure(0, weight=1)
 main_frame.columnconfigure(1, weight=1)
 
-submit_btn = tk.Button(main_frame, text="Predikcija", command=submit, font=default_font)
-submit_btn.grid(row=11, column=0, columnspan=2, pady=15)
+btn_linear = tk.Button(main_frame, text="Linearna regresija", command=submit_linear_regression, font=default_font)
+btn_linear.grid(row=11, column=0, pady=15, sticky="EW", padx=(0, 5))
+
+btn_polynomial = tk.Button(main_frame, text="Polinomska regresija", command=submit_polynomial_regression, font=default_font)
+btn_polynomial.grid(row=11, column=1, pady=15, sticky="EW", padx=(5, 0))
 
 # Run GUI
 root.mainloop()
