@@ -1,8 +1,12 @@
 # Floor: ground floor ("PR" or "VPR") = 0, last floor = 0, all others = 1
 FLOOR_MAP = {"PR": 0, "VPR": 0}
 
-# Parking: both "garaža" and "parking" = 2, none = 0, one of them = 1
-PARKING_KEYWORDS = ["garaža", "parking"]
+CONDITION_MAP = {
+    "Ostalo": 0,
+    "Izvorno stanje": 1,
+    "Renovirano": 2,
+    "Lux": 3
+}
 
 # Roman numerals mapping
 ROMAN_MAP = {

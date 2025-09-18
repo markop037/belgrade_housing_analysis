@@ -92,8 +92,8 @@ new_apartment = {
     "Type": "Novogradnja",
     "Condition": "Lux",
     "Heating": "EG",
-    "Parking_garage": 0,
-    "Parking_outdoor": 1
+    "Parking_garage": 1,
+    "Parking_outdoor": 0
 }
 
 result = model.predict(new_apartment)

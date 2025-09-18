@@ -74,12 +74,12 @@ new_apartment = {
     "Municipality": "Voždovac",
     "Area_m2": 40,
     "Rooms": 1.5,
-    "Floor": "VPR/4",
+    "Floor": "I/8",
     "Type": "Novogradnja",
     "Condition": "Lux",
     "Heating": "EG",
-    "Parking_garage": 0,
-    "Parking_outdoor": 1
+    "Parking_garage": 1,
+    "Parking_outdoor": 0
 }
 
 result = model.predict(new_apartment)

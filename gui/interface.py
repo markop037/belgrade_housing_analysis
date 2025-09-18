@@ -67,6 +67,10 @@ def validate_inputs():
 
 def submit_linear_regression():
     if validate_inputs():
+        # Invert parking values
+        parking_garage_value = 0 if garage_var.get() else 1
+        parking_outdoor_value = 0 if parking_var.get() else 1
+
         # Collect apartment data from inputs
         new_apartment = {
             "Price": 0,
@@ -77,8 +81,8 @@ def submit_linear_regression():
             "Type": building_var.get(),
             "Condition": condition_var.get(),
             "Heating": heating_var.get(),
-            "Parking_garage": garage_var.get(),
-            "Parking_outdoor": parking_var.get()
+            "Parking_garage": parking_garage_value,
+            "Parking_outdoor": parking_outdoor_value
         }
 
         # Load the trained linear regression model
@@ -125,6 +129,10 @@ def submit_linear_regression():
 
 def submit_polynomial_regression():
     if validate_inputs():
+        # Invert parking values
+        parking_garage_value = 0 if garage_var.get() else 1
+        parking_outdoor_value = 0 if parking_var.get() else 1
+
         # Collect apartment data from inputs
         new_apartment = {
             "Price": 0,
@@ -135,8 +143,8 @@ def submit_polynomial_regression():
             "Type": building_var.get(),
             "Condition": condition_var.get(),
             "Heating": heating_var.get(),
-            "Parking_garage": garage_var.get(),
-            "Parking_outdoor": parking_var.get()
+            "Parking_garage": parking_garage_value,
+            "Parking_outdoor": parking_outdoor_value
         }
 
         # Load the trained polynomial regression model
