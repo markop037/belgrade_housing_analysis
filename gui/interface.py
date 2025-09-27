@@ -19,12 +19,18 @@ def update_floors(*args):
     except ValueError:
         total = 0
 
-    options = ["PR", "VPR"]
+    # Add PR and VPR with total number of floors
+    options = [f"PR/{total}", f"VPR/{total}"]
+
+    # Add Roman numeral options
     for roman, value in ROMAN_MAP.items():
         if value <= total:
             options.append(f"{roman}/{total}")
 
+    # Update the dropdown menu with new options
     floor_menu['values'] = options
+
+    # Set the default selected value
     if options:
         floor_var.set(options[0])
     else:

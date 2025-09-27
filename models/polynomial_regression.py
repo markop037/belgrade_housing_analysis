@@ -88,7 +88,7 @@ new_apartment = {
     "Municipality": "Voždovac",
     "Area_m2": 40,
     "Rooms": 1.5,
-    "Floor": "VPR/4",
+    "Floor": "I/8",
     "Type": "Novogradnja",
     "Condition": "Lux",
     "Heating": "EG",
