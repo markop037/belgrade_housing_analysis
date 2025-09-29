@@ -57,13 +57,19 @@ def validate_inputs():
 
     # Check numeric fields
     try:
-        float(size_var.get())
+        size = float(size_var.get())
+        if size < 0:
+            messagebox.showerror("Greška", "Kvadratura ne može biti negativna!")
+            return False
     except ValueError:
         messagebox.showerror("Greška", "Kvadratura mora biti broj!")
         return False
 
     try:
-        int(floor_total_var.get())
+        total_floors = int(floor_total_var.get())
+        if total_floors < 0:
+            messagebox.showerror("Greška", "Ukupan broj spratova ne može biti negativan!")
+            return False
     except ValueError:
         messagebox.showerror("Greška", "Ukupan broj spratova mora biti ceo broj!")
         return False
