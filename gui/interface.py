@@ -1,280 +1,330 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
+from PySide6 import QtCore, QtGui, QtWidgets
+import sys
 import pandas as pd
+from PySide6.QtCore import Qt
+
 from scripts.scorebook import ROMAN_MAP
-from models.linear_regression import LinearRegressionModel
 from models.polynomial_regression import PolynomialRegressionModel
 
 
-def add_row(row, label_text, widget):
-    tk.Label(main_frame, text=label_text, font=default_font).grid(row=row, column=0, pady=5, sticky="EW")
-    widget.grid(row=row, column=1, pady=5, sticky="EW")
+class ApartmentApp(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Belgrade Apartment Price Estimator")
+        self.setFixedSize(460, 580)
+        self._load_data()
+        self._build_ui()
+        self._apply_styles()
 
+    def _load_data(self):
+        df = pd.read_csv("../data/processed/serbian_apartments_clean.csv")
+        self.municipalities = df["Municipality"].dropna().unique().tolist()
+        self.rooms = sorted(df["Rooms"].dropna().astype(float).unique().tolist())
+        self.types = df["Type"].dropna().unique().tolist()
+        self.condition = df["Condition"].dropna().unique().tolist()
+        self.heating = df["Heating"].dropna().unique().tolist()
 
-def update_floors(*args):
-    try:
-        total = int(floor_total_var.get())
-        if total < 0:
+    def _build_ui(self):
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+
+        title = QtWidgets.QLabel("Enter Apartment Details")
+        title.setFont(QtGui.QFont("Arial", 16, QtGui.QFont.Weight.Bold))
+        title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+
+        subtitle = QtWidgets.QLabel("All fields are required for an accurate prediction.")
+        subtitle.setStyleSheet("color: #666;")
+        subtitle.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(subtitle)
+
+        form = QtWidgets.QFormLayout()
+        form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+
+        # City (readonly)
+        self.city_le = QtWidgets.QLineEdit("Belgrade")
+        self.city_le.setStyleSheet("color: black")
+        self.city_le.setReadOnly(True)
+        form.addRow("City:", self.city_le)
+
+        # Municipality
+        self.municipality_cb = QtWidgets.QComboBox()
+        self.municipality_cb.addItems(self.municipalities)
+        self.municipality_cb.setEditable(False)
+        form.addRow("Municipality:", self.municipality_cb)
+
+        # Size
+        self.size_le = QtWidgets.QLineEdit()
+        self.size_le.setStyleSheet("color: black;")
+        self.size_le.setPlaceholderText("e.g. 65")
+        form.addRow("Area (m²):", self.size_le)
+
+        # Rooms
+        self.rooms_cb = QtWidgets.QComboBox()
+        self.rooms_cb.addItems([str(r) for r in self.rooms])
+        self.rooms_cb.setEditable(False)
+        form.addRow("Number of Rooms:", self.rooms_cb)
+
+        # Type
+        self.type_cb = QtWidgets.QComboBox()
+        self.type_cb.addItems(self.types)
+        self.type_cb.setEditable(False)
+        form.addRow("Building Type:", self.type_cb)
+
+        # Condition
+        self.condition_cb = QtWidgets.QComboBox()
+        self.condition_cb.addItems(self.condition)
+        self.condition_cb.setEditable(False)
+        form.addRow("Condition:", self.condition_cb)
+
+        # Heating
+        self.heating_cb = QtWidgets.QComboBox()
+        self.heating_cb.addItems(self.heating)
+        self.heating_cb.setEditable(False)
+        form.addRow("Heating:", self.heating_cb)
+
+        # Total floors
+        self.floor_total_le = QtWidgets.QLineEdit()
+        self.floor_total_le.setStyleSheet("color: black;")
+        self.floor_total_le.setPlaceholderText("Enter total floors")
+        form.addRow("Total Floors in Building:", self.floor_total_le)
+
+        # Floor (combobox updated dynamically)
+        self.floor_cb = QtWidgets.QComboBox()
+        self.floor_cb.setEditable(False)
+        form.addRow("Apartment Floor:", self.floor_cb)
+
+        layout.addLayout(form)
+
+        # Connect floor_total change to update
+        self.floor_total_le.textChanged.connect(self.update_floors)
+
+        # Parking checkboxes
+        park_layout = QtWidgets.QHBoxLayout()
+        self.garage_cb = QtWidgets.QCheckBox("Garage")
+        self.parking_cb = QtWidgets.QCheckBox("Outdoor Parking")
+        park_layout.addWidget(self.garage_cb)
+        park_layout.addWidget(self.parking_cb)
+        layout.addLayout(park_layout)
+
+        btn_layout = QtWidgets.QHBoxLayout()
+        self.poly_btn = QtWidgets.QPushButton("Calculate Price")
+        self.poly_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_layout.addWidget(self.poly_btn)
+        layout.addLayout(btn_layout)
+
+        self.poly_btn.clicked.connect(self.submit_polynomial_regression)
+
+        # Initialize floors
+        self.update_floors()
+
+    def _apply_styles(self):
+        # Refined modern style
+        self.setStyleSheet(r"""
+            QWidget {
+                font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+                font-size: 11pt;
+                background-color: #f7f8fa;
+            }
+
+            QComboBox {
+                color: black;
+                background-color: white;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                padding: 3px;
+            }
+
+            QComboBox:hover {
+                border: 1px solid #888;
+            }
+
+            QComboBox QAbstractItemView {
+                background-color: white;
+                color: black;
+                selection-background-color: #f0f0f0;
+                selection-color: black;
+            }
+
+            QComboBox QAbstractItemView::item:hover {
+                background-color: #e6f2ff;
+                color: black;
+            }
+
+            QLineEdit, QComboBox {
+                padding: 6px 8px;
+                border: 1px solid #c0c0c0;
+                border-radius: 6px;
+                background: white;
+            }
+
+            QLineEdit:focus, QComboBox:focus {
+                border: 1px solid #4a90e2;
+                box-shadow: 0 0 4px rgba(74,144,226,0.5);
+            }
+
+            QPushButton {
+                padding: 8px 12px;
+                border-radius: 8px;
+                border: 1px solid #2c7bd9;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                            stop:0 #4aa3ff, stop:1 #2c7bd9);
+                color: white;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                            stop:0 #66b2ff, stop:1 #3a8ef0);
+                border: 1px solid #1f5cb8;
+            }
+
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                            stop:0 #2c7bd9, stop:1 #1a63b3);
+            }
+
+            QLabel {
+                color: #222;
+            }
+            
+            QCheckBox {
+                color: black;
+            }
+            
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border: 1px solid black;
+                border-radius: 3px;
+                background: transparent;
+            }
+            
+            QCheckBox::indicator:checked {
+                background-color: black; /* makes the checkmark visible */
+                image: none;
+            }
+        """)
+
+    def update_floors(self):
+        text = self.floor_total_le.text().strip()
+        try:
+            total = int(text) if text else 0
+            if total < 0:
+                total = 0
+        except ValueError:
             total = 0
-    except ValueError:
-        total = 0
 
-    # Add PR and VPR with total number of floors
-    options = [f"PR/{total}", f"VPR/{total}"]
+        options = [f"PR/{total}", f"VPR/{total}"]
+        for roman, value in ROMAN_MAP.items():
+            if value <= total:
+                options.append(f"{roman}/{total}")
 
-    # Add Roman numeral options
-    for roman, value in ROMAN_MAP.items():
-        if value <= total:
-            options.append(f"{roman}/{total}")
+        self.floor_cb.clear()
+        if options:
+            self.floor_cb.addItems(options)
+            self.floor_cb.setCurrentIndex(0)
 
-    # Update the dropdown menu with new options
-    floor_menu['values'] = options
+    def validate_inputs(self):
+        required = {
+            "Municipality": self.municipality_cb.currentText(),
+            "Area": self.size_le.text(),
+            "Rooms": self.rooms_cb.currentText(),
+            "Building Type": self.type_cb.currentText(),
+            "Condition": self.condition_cb.currentText(),
+            "Heating": self.heating_cb.currentText(),
+            "Total Floors": self.floor_total_le.text(),
+            "Apartment Floor": self.floor_cb.currentText(),
+        }
+        for name, val in required.items():
+            if not val or not str(val).strip():
+                QtWidgets.QMessageBox.critical(self, "Error", f"Field '{name}' cannot be empty!")
+                return False
 
-    # Set the default selected value
-    if options:
-        floor_var.set(options[0])
-    else:
-        floor_var.set("")
-
-
-# Validation function
-def validate_inputs():
-    # Check required fields
-    required_fields = {
-        "Opština": municipality_var.get(),
-        "Kvadratura": size_var.get(),
-        "Broj soba": rooms_var.get(),
-        "Tip objekta": building_var.get(),
-        "Stanje objekta": condition_var.get(),
-        "Grejanje": heating_var.get(),
-        "Ukupan broj spratova": floor_total_var.get(),
-        "Sprat stana": floor_var.get()
-    }
-    for field_name, value in required_fields.items():
-        if not value.strip():
-            messagebox.showerror("Greška", f"Polje '{field_name}' ne sme biti prazno!")
+        try:
+            size = float(self.size_le.text())
+            if size < 0:
+                QtWidgets.QMessageBox.critical(self, "Error", "Area cannot be negative!")
+                return False
+        except ValueError:
+            QtWidgets.QMessageBox.critical(self, "Error", "Area must be a number!")
             return False
 
-    # Check numeric fields
-    try:
-        size = float(size_var.get())
-        if size < 0:
-            messagebox.showerror("Greška", "Kvadratura ne može biti negativna!")
+        try:
+            total_floors = int(self.floor_total_le.text())
+            if total_floors < 0:
+                QtWidgets.QMessageBox.critical(self, "Error", "Total floors cannot be negative!")
+                return False
+        except ValueError:
+            QtWidgets.QMessageBox.critical(self, "Error", "Total floors must be an integer!")
             return False
-    except ValueError:
-        messagebox.showerror("Greška", "Kvadratura mora biti broj!")
-        return False
 
-    try:
-        total_floors = int(floor_total_var.get())
-        if total_floors < 0:
-            messagebox.showerror("Greška", "Ukupan broj spratova ne može biti negativan!")
-            return False
-    except ValueError:
-        messagebox.showerror("Greška", "Ukupan broj spratova mora biti ceo broj!")
-        return False
+        return True
 
-    return True
+    def _collect_apartment(self):
+        parking_garage_value = 0 if self.garage_cb.isChecked() else 1
+        parking_outdoor_value = 0 if self.parking_cb.isChecked() else 1
 
-
-def submit_linear_regression():
-    if validate_inputs():
-        # Invert parking values
-        parking_garage_value = 0 if garage_var.get() else 1
-        parking_outdoor_value = 0 if parking_var.get() else 1
-
-        # Collect apartment data from inputs
         new_apartment = {
             "Price": 0,
-            "Municipality": municipality_var.get(),
-            "Area_m2": float(size_var.get()),
-            "Rooms": float(rooms_var.get()),
-            "Floor": floor_var.get(),
-            "Type": building_var.get(),
-            "Condition": condition_var.get(),
-            "Heating": heating_var.get(),
+            "Municipality": self.municipality_cb.currentText(),
+            "Area_m2": float(self.size_le.text()),
+            "Rooms": float(self.rooms_cb.currentText()),
+            "Floor": self.floor_cb.currentText(),
+            "Type": self.type_cb.currentText(),
+            "Condition": self.condition_cb.currentText(),
+            "Heating": self.heating_cb.currentText(),
             "Parking_garage": parking_garage_value,
-            "Parking_outdoor": parking_outdoor_value
+            "Parking_outdoor": parking_outdoor_value,
         }
+        return new_apartment
 
-        # Load the trained linear regression model
-        model = LinearRegressionModel()
-        prediction = model.predict(new_apartment)
+    def _show_prediction_popup(self, title, prediction, color="green"):
+        dlg = QtWidgets.QDialog(self)
+        dlg.setWindowTitle(title)
+        dlg.setFixedSize(420, 200)
 
-        # Create custom popup window for displaying prediction
-        popup = tk.Toplevel(root)
-        popup.title("Predicted Price - Linear")
+        v = QtWidgets.QVBoxLayout(dlg)
+        lbl_title = QtWidgets.QLabel("Estimated Apartment Value")
+        lbl_title.setFont(QtGui.QFont("Arial", 13, QtGui.QFont.Weight.Bold))
+        lbl_title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        v.addWidget(lbl_title)
 
-        # Set popup size
-        popup_width = 400
-        popup_height = 200
+        lbl_price = QtWidgets.QLabel(f"{prediction} €")
+        lbl_price.setFont(QtGui.QFont("Arial", 16, QtGui.QFont.Weight.Bold))
+        lbl_price.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        lbl_price.setStyleSheet(f"color: {color};")
+        v.addWidget(lbl_price)
 
-        # Center popup relative to main window
-        root_x = root.winfo_x()
-        root_y = root.winfo_y()
-        root_width = root.winfo_width()
-        root_height = root.winfo_height()
+        btn = QtWidgets.QPushButton("Close")
+        btn.clicked.connect(dlg.accept)
+        btn.setFixedWidth(100)
+        h = QtWidgets.QHBoxLayout()
+        h.addStretch()
+        h.addWidget(btn)
+        h.addStretch()
+        v.addLayout(h)
 
-        pos_x = root_x + (root_width // 2) - (popup_width // 2)
-        pos_y = root_y + (root_height // 2) - (popup_height // 2)
+        dlg.exec()
 
-        popup.geometry(f"{popup_width}x{popup_height}+{pos_x}+{pos_y}")
-        popup.resizable(False, False)
-
-        # Title inside popup
-        tk.Label(
-            popup, text="Procena vrednosti stana (linearna regresija)",
-            font=("Arial", 13, "bold")
-        ).pack(pady=(20, 10))
-
-        # Predicted price label
-        tk.Label(
-            popup, text=f"{prediction} €",
-            font=("Arial", 16, "bold"), fg="green"
-        ).pack(pady=10)
-
-        # Close button
-        tk.Button(
-            popup, text="Close", command=popup.destroy, font=default_font
-        ).pack(pady=10)
-
-
-def submit_polynomial_regression():
-    if validate_inputs():
-        # Invert parking values
-        parking_garage_value = 0 if garage_var.get() else 1
-        parking_outdoor_value = 0 if parking_var.get() else 1
-
-        # Collect apartment data from inputs
-        new_apartment = {
-            "Price": 0,
-            "Municipality": municipality_var.get(),
-            "Area_m2": float(size_var.get()),
-            "Rooms": float(rooms_var.get()),
-            "Floor": floor_var.get(),
-            "Type": building_var.get(),
-            "Condition": condition_var.get(),
-            "Heating": heating_var.get(),
-            "Parking_garage": parking_garage_value,
-            "Parking_outdoor": parking_outdoor_value
-        }
-
-        # Load the trained polynomial regression model
+    def submit_polynomial_regression(self):
+        if not self.validate_inputs():
+            return
+        new_apartment = self._collect_apartment()
         model = PolynomialRegressionModel()
         prediction = model.predict(new_apartment)
-
-        # Create custom popup window for displaying prediction
-        popup = tk.Toplevel(root)
-        popup.title("Predicted Price - Polynomial")
-
-        # Set popup size
-        popup_width = 400
-        popup_height = 200
-
-        # Center popup relative to main window
-        root_x = root.winfo_x()
-        root_y = root.winfo_y()
-        root_width = root.winfo_width()
-        root_height = root.winfo_height()
-
-        pos_x = root_x + (root_width // 2) - (popup_width // 2)
-        pos_y = root_y + (root_height // 2) - (popup_height // 2)
-
-        popup.geometry(f"{popup_width}x{popup_height}+{pos_x}+{pos_y}")
-        popup.resizable(False, False)
-
-        # Title inside popup
-        tk.Label(
-            popup, text="Procena vrednosti stana (polinomska regresija)",
-            font=("Arial", 13, "bold")
-        ).pack(pady=(20, 10))
-
-        # Predicted price label
-        tk.Label(
-            popup, text=f"{prediction} €",
-            font=("Arial", 16, "bold"), fg="blue"
-        ).pack(pady=10)
-
-        # Close button
-        tk.Button(
-            popup, text="Close", command=popup.destroy, font=default_font
-        ).pack(pady=10)
+        self._show_prediction_popup("Predicted Price", prediction, color="#1b63d6")
 
 
-# Load data
-df = pd.read_csv("../data/processed/serbian_apartments_clean.csv")
-municipalities = df["Municipality"].dropna().unique().tolist()
-rooms = sorted(df["Rooms"].dropna().astype(float).unique().tolist())
-types = df["Type"].dropna().unique().tolist()
-condition = df["Condition"].dropna().unique().tolist()
-heating = df["Heating"].dropna().unique().tolist()
-
-# Main window
-root = tk.Tk()
-root.title("Belgrade Housing Analysis")
-root.resizable(False, False)
-window_width = 400
-window_height = 550
-screen_width = root.winfo_screenwidth()
-screen_height = root.winfo_screenheight()
-x = (screen_width // 2) - (window_width // 2)
-y = (screen_height // 2) - (window_height // 2)
-root.geometry(f"{window_width}x{window_height}+{x}+{y}")
-
-default_font = ("Arial", 11)
-main_frame = ttk.Frame(root, padding="15 15 15 15")
-main_frame.place(relx=0.5, rely=0.5, anchor="center")
-
-# Title label
-title_label = tk.Label(main_frame, text="Unesite nekretninu", font=("Arial", 14, "bold"))
-title_label.grid(row=0, column=0, columnspan=2, pady=(0, 15))
-
-# Input fields
-city_var = tk.StringVar(value="Beograd")
-add_row(1, "Grad:", tk.Entry(main_frame, textvariable=city_var, state="readonly", font=default_font))
-
-municipality_var = tk.StringVar()
-add_row(2, "Opština:", ttk.Combobox(main_frame, textvariable=municipality_var, values=municipalities, state="readonly", font=default_font))
-
-size_var = tk.StringVar()
-add_row(3, "Kvadratura (m²):", tk.Entry(main_frame, textvariable=size_var, font=default_font))
-
-rooms_var = tk.StringVar()
-add_row(4, "Broj soba:", ttk.Combobox(main_frame, textvariable=rooms_var, values=rooms, state="readonly", font=default_font))
-
-building_var = tk.StringVar()
-add_row(5, "Tip objekta:", ttk.Combobox(main_frame, textvariable=building_var, values=types, state="readonly", font=default_font))
-
-condition_var = tk.StringVar()
-add_row(6, "Stanje objekta:", ttk.Combobox(main_frame, textvariable=condition_var, values=condition, state="readonly", font=default_font))
-
-heating_var = tk.StringVar()
-add_row(7, "Grejanje:", ttk.Combobox(main_frame, textvariable=heating_var, values=heating, state="readonly", font=default_font))
-
-floor_total_var = tk.StringVar()
-add_row(8, "Ukupan broj spratova zgrade:", tk.Entry(main_frame, textvariable=floor_total_var, font=default_font))
-
-floor_var = tk.StringVar()
-floor_menu = ttk.Combobox(main_frame, textvariable=floor_var, state="readonly", font=default_font)
-floor_menu.grid(row=9, column=1, pady=5, sticky="EW")
-tk.Label(main_frame, text="Sprat stana:", font=default_font).grid(row=9, column=0, pady=5, sticky="EW")
-
-floor_total_var.trace_add("write", update_floors)
-
-# Checkboxes for parking
-garage_var = tk.IntVar()
-parking_var = tk.IntVar()
-tk.Checkbutton(main_frame, text="Garaža", variable=garage_var, font=default_font).grid(row=10, column=0, pady=5)
-tk.Checkbutton(main_frame, text="Parking", variable=parking_var, font=default_font).grid(row=10, column=1, pady=5)
-
-main_frame.columnconfigure(0, weight=1)
-main_frame.columnconfigure(1, weight=1)
-
-btn_linear = tk.Button(main_frame, text="Linearna regresija", command=submit_linear_regression, font=default_font)
-btn_linear.grid(row=11, column=0, pady=15, sticky="EW", padx=(0, 5))
-
-btn_polynomial = tk.Button(main_frame, text="Polinomska regresija", command=submit_polynomial_regression, font=default_font)
-btn_polynomial.grid(row=11, column=1, pady=15, sticky="EW", padx=(5, 0))
-
-# Run GUI
-root.mainloop()
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+    window = ApartmentApp()
+    screen = app.primaryScreen().availableGeometry()
+    x = (screen.width() - window.width()) // 2
+    y = (screen.height() - window.height()) // 2
+    window.move(x, y)
+    window.show()
+    sys.exit(app.exec())

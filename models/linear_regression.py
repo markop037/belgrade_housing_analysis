@@ -62,24 +62,8 @@ class LinearRegressionModel:
         area = float(new_apartment["Area_m2"])
         total_price = price_per_m2 * area
 
-        return f"Cena po m²: {price_per_m2:.2f} EUR/m²\nUkupna cena: {total_price:.2f} EUR"
+        return f"Price per m²: {price_per_m2:.2f} EUR/m²\nTotal price: {total_price:.2f} EUR"
 
 
 model = LinearRegressionModel()
 print(model.evaluate())
-
-# Define a new apartment for test
-new_apartment = {
-    "Price": 0,
-    "Municipality": "Voždovac",
-    "Area_m2": 40,
-    "Rooms": 1.5,
-    "Floor": "I/8",
-    "Type": "Novogradnja",
-    "Condition": "Lux",
-    "Heating": "EG",
-    "Parking_garage": 1,
-    "Parking_outdoor": 0
-}
-
-result = model.predict(new_apartment)

@@ -13,13 +13,13 @@ class PolynomialRegressionModel:
         # Load original dataset
         self.df_clean = pd.read_csv(csv_path, encoding="utf-8-sig", on_bad_lines="skip")
 
+        # Separate target variable BEFORE preprocessing
+        self.y = self.df_clean["Price_per_m2"]
+        X_raw = self.df_clean.drop(columns=["Price_per_m2"])
+
         # Create and fit the preprocessor
         self.prep = ApartmentPreprocessor()
-        df_model = self.prep.fit_transform(self.df_clean, scale=True)
-
-        # Separate target variable
-        self.y = df_model["Price_per_m2"]
-        self.X = df_model.drop(columns=["Price_per_m2"])
+        self.X = self.prep.fit_transform(X_raw, scale=True)
 
         # Polynomial degree and Ridge alpha
         self.degree = degree
@@ -50,7 +50,6 @@ class PolynomialRegressionModel:
         mse = mean_squared_error(self.y_test, y_pred)
         rmse = np.sqrt(mse)
         r2 = r2_score(self.y_test, y_pred)
-        avg_price = self.y.mean()
 
         return (
             f"Polynomial Degree: {self.degree}\n"
@@ -64,7 +63,7 @@ class PolynomialRegressionModel:
         df_new = pd.DataFrame([new_apartment])
 
         # Preprocess using already fitted preprocessor
-        df_new_processed = self.prep.transform(df_new, scale=True).drop(columns=["Price_per_m2"])
+        df_new_processed = self.prep.transform(df_new, scale=True)
 
         # Reindex to ensure same features as training set
         df_new_processed = df_new_processed.reindex(columns=self.X.columns, fill_value=0)
@@ -76,24 +75,8 @@ class PolynomialRegressionModel:
         area = float(new_apartment["Area_m2"])
         total_price = price_per_m2 * area
 
-        return f"Cena po m²: {price_per_m2:.2f} EUR/m²\nUkupna cena: {total_price:.2f} EUR"
+        return f"Price per m²: {price_per_m2:.2f} EUR/m²\nTotal price: {total_price:.2f} EUR"
 
 
 model = PolynomialRegressionModel()
 print(model.evaluate())
-
-# Define a new apartment for test
-new_apartment = {
-    "Price": 0,
-    "Municipality": "Voždovac",
-    "Area_m2": 40,
-    "Rooms": 1.5,
-    "Floor": "I/8",
-    "Type": "Novogradnja",
-    "Condition": "Lux",
-    "Heating": "EG",
-    "Parking_garage": 1,
-    "Parking_outdoor": 0
-}
-
-result = model.predict(new_apartment)

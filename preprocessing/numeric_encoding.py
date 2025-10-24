@@ -55,7 +55,7 @@ class ApartmentPreprocessor:
         # compute municipality score and fit scaler
         df = self.transform_base(df)
 
-        avg_prices = df.groupby("Municipality")["Price_per_m2"].mean().sort_values(ascending=False)
+        avg_prices = df.groupby("Municipality")["Price"].mean().sort_values(ascending=False)
         self.municipality_score = {mun: len(avg_prices) - rank for rank, mun in enumerate(avg_prices.index)}
         df["Municipality_score"] = df["Municipality"].map(self.municipality_score).fillna(0)
 
@@ -86,7 +86,7 @@ class ApartmentPreprocessor:
         return self.fit(df).transform(df, scale=scale)
 
     def transform_base(self, df):
-        # clean price and area, compute price per m2
+        # clean price and area
         df = df.copy()
         df["Price"] = (
             df["Price"].astype(str)
@@ -95,7 +95,6 @@ class ApartmentPreprocessor:
             .str.replace(r"\s+", "", regex=True)
         ).astype(float)
         df["Area_m2"] = df["Area_m2"].astype(str).str.replace(",", ".").astype(float)
-        df["Price_per_m2"] = df["Price"] / df["Area_m2"]
         return df
 
     def transform_features(self, df):
@@ -127,9 +126,6 @@ class ApartmentPreprocessor:
                    [col for col in df_encoded.columns if col.startswith(("Type_str_", "Heating_str_"))]
 
         df_model = df_encoded[features].copy()
-
-        # reduce price a bit if floor is negative
-        df_model["Price_per_m2"] = df["Price_per_m2"] * (1 - 0.05 * df_model["Negative_floor"])
 
         return df_model
 

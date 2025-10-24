@@ -1,7 +1,7 @@
 import pandas as pd
 import ast
 
-# Load the raw CSVs ---
+# Load CSVs
 df_basic = pd.read_csv("../data/raw/serbian_apartments_basic.csv")
 df_details = pd.read_csv("../data/raw/serbian_apartments_details.csv")
 
@@ -9,7 +9,8 @@ df_details = pd.read_csv("../data/raw/serbian_apartments_details.csv")
 if "URL" in df_details.columns:
     df_details = df_details.loc[:, df_details.columns != "URL"]
 
-# Function to split the location into separate columns ---
+
+# Function to split the location into separate columns
 def split_location(location):
     parts = [x.strip() for x in location.split(',')]
     while len(parts) < 5:
@@ -19,7 +20,8 @@ def split_location(location):
         'Municipality': parts[2] if parts[2] != '' else 'Ostalo',
     })
 
-# Function to split details into area, rooms, and floor ---
+
+# Function to split details into area, rooms, and floor
 def split_details(details):
     try:
         details_list = ast.literal_eval(details)
@@ -45,14 +47,14 @@ def split_details(details):
         })
 
 
-# Apply location and details transformations ---
+# Apply location and details transformations
 location_df = df_basic['Location'].apply(split_location)
 details_df_split = df_basic['Details'].apply(split_details)
 
-# Create cleaned basic DataFrame ---
+# Create cleaned basic DataFrame
 df_basic_clean = pd.concat([df_basic[["URL", "Title", "Price"]], location_df, details_df_split], axis=1)
 
-# Select relevant columns from details CSV ---
+# Select relevant columns from details CSV
 cols_to_add = ["Type", "Condition", "Heating", "Parking_garage", "Parking_outdoor"]
 df_details_subset = df_details[cols_to_add]
 
@@ -61,10 +63,23 @@ categorical_cols = ["Type", "Condition", "Heating"]
 df_details_subset[categorical_cols] = df_details_subset[categorical_cols].fillna('Ostalo')
 df_details_subset[categorical_cols] = df_details_subset[categorical_cols].replace('', 'Ostalo')
 
-# Combine basic and detailed DataFrames ---
+# Combine basic and detailed DataFrames
 df_combine = pd.concat([df_basic_clean, df_details_subset], axis=1).reset_index(drop=True)
 
-# Save the cleaned CSV ---
+# clean price and area, compute price per m2
+df_combine["Price"] = (
+            df_combine["Price"].astype(str)
+            .str.replace(r"[€.]", "", regex=True)
+            .str.replace(",", ".", regex=False)
+            .str.replace(r"\s+", "", regex=True)
+        ).astype(float)
+df_combine["Area_m2"] = df_combine["Area_m2"].astype(str).str.replace(",", ".").astype(float)
+df_combine["Price_per_m2"] = (
+    (df_combine["Price"] / df_combine["Area_m2"])
+    .round(3)  # round to 3 decimals
+)
+
+# Save the cleaned CSV
 df_combine.to_csv("../data/processed/serbian_apartments_clean.csv", index=False, encoding="utf-8-sig")
 
 print(f"Cleaned and combined data saved with {len(df_combine)} rows.")
