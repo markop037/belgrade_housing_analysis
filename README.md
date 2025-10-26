@@ -1,4 +1,4 @@
-# Python Application for Apartment Price Factor Analysis
+# Apartment Price Prediction Application
 
 ## Table of Contents
 
@@ -98,9 +98,9 @@ Its purpose is to provide a clean and intuitive experience for users to input ap
 
 - **Input Validation:**  
 Ensures that:
-- Numeric values (like size or floor count) are valid and non-negative.  
-- Required fields (e.g., municipality) are not left empty.  
-- Invalid input triggers warning dialogs via `QMessageBox`.
+  - Numeric values (like size or floor count) are valid and non-negative.  
+  - Required fields (e.g., municipality) are not left empty.  
+  - Invalid input triggers warning dialogs via `QMessageBox`.
 
 Once clicked, the app:
 1. Gathers user input into a structured data dictionary.
@@ -125,3 +125,9 @@ The **PySide6** framework ensures a polished, cross-platform experience, offerin
 ---
 
 ## Application Demonstration
+
+<p align="center">
+  <a href="https://youtu.be/rCNC-TKOXfc">
+    <img src="https://img.youtube.com/vi/rCNC-TKOXfc/maxresdefault.jpg" alt="Video Preview" width="600"/>
+  </a>
+</p>
